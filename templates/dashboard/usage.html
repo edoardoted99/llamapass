@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Usage - Ollama API Hub{% endblock %}
+
+{% block content %}
+<h2>How to use your API key</h2>
+
+<div class="card mb-4">
+  <div class="card-header">Gateway URL</div>
+  <div class="card-body">
+    <p class="mb-0">Use <code>{{ request.scheme }}://{{ request.get_host }}/ollama/</code> as your Ollama API base URL and include your API key in the headers.</p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Authentication</div>
+  <div class="card-body">
+    <p>You can authenticate using any of these headers:</p>
+    <ul>
+      <li><code>Authorization: Api-Key YOUR_API_KEY</code></li>
+      <li><code>Authorization: Bearer YOUR_API_KEY</code> (compatible with OpenAI SDKs)</li>
+      <li><code>X-API-Key: YOUR_API_KEY</code></li>
+    </ul>
+    <p class="text-muted mb-0">Replace <code>YOUR_API_KEY</code> with the key shown after creation (starts with <code>oah_</code>).</p>
+  </div>
+</div>
+
+{% with examples="curl_generate,curl_chat,python_openai,python_requests" %}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    curl - Generate
+    <button class="btn btn-sm btn-outline-secondary" onclick="copyCode('code_curl_generate', this)">Copy</button>
+  </div>
+  <div class="card-body p-0">
+    <pre class="bg-body-tertiary p-3 rounded mb-0" id="code_curl_generate"><code>curl {{ request.scheme }}://{{ request.get_host }}/ollama/api/generate \
+  -H "Authorization: Api-Key YOUR_API_KEY" \
+  -d '{
+  "model": "gemma3:1b",
+  "prompt": "Why is the sky blue?",
+  "stream": false
+}'</code></pre>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    curl - Chat
+    <button class="btn btn-sm btn-outline-secondary" onclick="copyCode('code_curl_chat', this)">Copy</button>
+  </div>
+  <div class="card-body p-0">
+    <pre class="bg-body-tertiary p-3 rounded mb-0" id="code_curl_chat"><code>curl {{ request.scheme }}://{{ request.get_host }}/ollama/api/chat \
+  -H "Authorization: Api-Key YOUR_API_KEY" \
+  -d '{
+  "model": "gemma3:1b",
+  "messages": [{"role": "user", "content": "Hello!"}],
+  "stream": false
+}'</code></pre>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    Python - OpenAI SDK
+    <button class="btn btn-sm btn-outline-secondary" onclick="copyCode('code_python_openai', this)">Copy</button>
+  </div>
+  <div class="card-body p-0">
+    <pre class="bg-body-tertiary p-3 rounded mb-0" id="code_python_openai"><code>from openai import OpenAI
+
+client = OpenAI(
+    base_url="{{ request.scheme }}://{{ request.get_host }}/ollama/v1",
+    api_key="YOUR_API_KEY",
+)
+
+response = client.chat.completions.create(
+    model="gemma3:1b",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+print(response.choices[0].message.content)</code></pre>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    Python - requests
+    <button class="btn btn-sm btn-outline-secondary" onclick="copyCode('code_python_requests', this)">Copy</button>
+  </div>
+  <div class="card-body p-0">
+    <pre class="bg-body-tertiary p-3 rounded mb-0" id="code_python_requests"><code>import requests
+
+response = requests.post(
+    "{{ request.scheme }}://{{ request.get_host }}/ollama/api/chat",
+    headers={"Authorization": "Api-Key YOUR_API_KEY"},
+    json={
+        "model": "gemma3:1b",
+        "messages": [{"role": "user", "content": "Hello!"}],
+        "stream": False,
+    },
+)
+print(response.json()["message"]["content"])</code></pre>
+  </div>
+</div>
+{% endwith %}
+
+{% if available_models %}
+<div class="card mb-4">
+  <div class="card-header">Available Models</div>
+  <div class="card-body">
+    {% for model in available_models %}
+    <span class="badge bg-secondary me-1 mb-1">{{ model }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<script>
+function copyCode(preId, btn) {
+  const code = document.getElementById(preId).textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = original, 2000);
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+ollama-api-hub — Technical Specification (Prompt-Friendly)
+
+GOAL
+Build a Django-based “Ollama Gateway + Admin Panel” that securely exposes a private Ollama instance to external users, with:
+- API keys per user/integration
+- usage tracking (requests + token usage when available)
+- rate limiting
+- optional model allowlists per key/user
+- a web dashboard for users and admins
+
+The Ollama server is NOT exposed publicly. It is reachable only from the Linux gateway, e.g. via:
+- local Ollama on the same host, or
+- SSH tunnel to a Mac running Ollama:
+  Linux listens on 127.0.0.1:11435 -> forwards to Mac localhost:11434
+
+Internet clients call only the gateway over HTTPS.
+
+HIGH-LEVEL ARCHITECTURE
+Client (curl/Postman/app)
+  -> HTTPS reverse proxy (Caddy/Nginx :443)
+    -> Django “ollama-api-hub” (auth + dashboard + proxy)
+      -> Private Ollama API (http://127.0.0.1:11435)
+         -> (optional SSH tunnel) -> Mac Ollama (localhost:11434)
+
+Key rule: only :443 is public. Ollama is private (127.0.0.1 only).
+
+SUPPORTED OLLAMA ENDPOINTS (initial)
+Gateway must proxy the main Ollama REST endpoints (same paths as upstream), at a stable base prefix:
+- /ollama/api/tags
+- /ollama/api/show
+- /ollama/api/pull (optional; admin-only)
+- /ollama/api/push (optional; admin-only)
+- /ollama/api/copy (optional; admin-only)
+- /ollama/api/delete (optional; admin-only)
+- /ollama/api/create (optional; admin-only)
+- /ollama/api/embeddings
+- /ollama/api/generate  (STREAMING is critical)
+- /ollama/api/chat      (STREAMING is critical)
+
+Proxying should preserve method/path/query/body and return upstream responses with minimal transformation.
+
+CRITICAL: STREAMING
+Ollama /api/generate and /api/chat commonly use streaming responses (chunked JSON lines).
+The gateway MUST support streaming pass-through:
+- Do not buffer the full response.
+- Stream chunks to the client as received.
+Implementation recommendation:
+- Run Django in ASGI mode (uvicorn/daphne).
+- Use httpx.AsyncClient().stream(...) and Django StreamingHttpResponse (or ASGI equivalent).
+- Ensure correct content-type and chunk boundaries.
+If streaming is disabled, provide a config flag but default must be streaming-enabled.
+
+AUTHENTICATION MODEL
+API calls:
+- Use API key authentication for ALL gateway endpoints.
+- Header format:
+  Authorization: Api-Key <key>
+(or support X-API-Key as optional)
+Panel (web UI):
+- Django session auth for login.
+
+API KEY MANAGEMENT
+- API key belongs to a Django User (owner).
+- Store only hashed key (never store plaintext).
+- Show plaintext key only once at creation.
+- Support revoke/disable at any time.
+- Metadata:
+  name/label, created_at, revoked_at, last_used_at, is_active.
+
+OPTIONAL POLICY CONTROLS (important for Ollama)
+Per key/user policy:
+- Allowed models allowlist:
+  - Example: key A can use ["llama3", "mistral"], key B can use ["nomic-embed-text"].
+- Deny model usage if request references a model not in allowlist.
+- Optional: max context/num_predict limits per key (if Ollama parameters are present).
+- Admin-only endpoints:
+  - pull/push/create/delete/copy should be restricted to admin keys/users by default.
+
+RATE LIMITING
+- Enforce per-key and per-user rate limits.
+- Defaults:
+  - e.g. 60 requests/minute per key.
+- Optional: separate buckets for embeddings vs generation.
+- Throttling should trigger 429 with a stable error format.
+
+USAGE & ANALYTICS (Ollama-focused)
+Track:
+A) RequestLog (detailed recent)
+- timestamp
+- user, api_key
+- endpoint (/api/chat, /api/generate, /api/embeddings, etc.)
+- model requested
+- status_code
+- latency_ms
+- ip, user_agent
+- streaming flag (true/false)
+- request_size, response_size (if available)
+
+B) Token usage
+Ollama responses may include fields such as:
+- prompt_eval_count
+- eval_count
+(Exact names can vary by Ollama version/endpoint; implementation must be tolerant.)
+Goal:
+- Extract token-like counts when present and store:
+  - tokens_in (prompt_eval_count or equivalent)
+  - tokens_out (eval_count or equivalent)
+- For streaming:
+  - capture final summary chunk (often last chunk contains counts) and store totals.
+If counts are absent, store null and still count request.
+
+C) Aggregates
+Daily aggregates per user and per key:
+- date
+- calls_total
+- calls_generate
+- calls_chat
+- calls_embeddings
+- calls_2xx, 4xx, 5xx
+- avg_latency_ms
+- tokens_in_total, tokens_out_total (when available)
+
+DASHBOARD REQUIREMENTS (Ollama-focused)
+User panel:
+- “My Keys”
+  - list/create/revoke keys
+  - show key once on create
+- “Usage”
+  - calls today / last 7 days / last 30 days
+  - breakdown by endpoint (chat/generate/embeddings)
+  - token totals (in/out) if available
+  - per-model usage (top models)
+- “Recent Requests”
+  - table with timestamp, endpoint, model, status, latency, tokens in/out
+
+Admin panel:
+- All users, all keys
+- Global usage overview
+- Policy editor (model allowlists per key/user)
+- Rate limit policies
+- Admin-only control toggles for dangerous endpoints (pull/delete/etc.)
+- Audit events:
+  - user created/disabled
+  - key created/revoked
+  - policy changed
+
+PROXY BEHAVIOR DETAILS
+For each request to /ollama/*:
+1) Authenticate API key
+2) Authorize:
+   - if endpoint is admin-only, require admin user/key
+   - enforce model allowlist:
+     - parse JSON body field "model" where applicable
+     - deny if model not allowed
+3) Rate limit (per key/user)
+4) Forward to upstream base URL:
+   UPSTREAM_OLLAMA_URL = http://127.0.0.1:11435
+   Forward path = incoming path without /ollama prefix
+   Example:
+     /ollama/api/chat -> http://127.0.0.1:11435/api/chat
+5) Streaming:
+   - If upstream uses chunked transfer:
+     stream bytes to client as they arrive
+   - Collect minimal metadata for logging:
+     - start time, end time, status
+     - attempt to parse final chunk JSON for token counts
+6) Log request + update aggregates + update last_used_at
+
+HEADER SANITIZATION
+- Do not forward the client Authorization header to upstream.
+- Allowlist safe headers (Content-Type, Accept, User-Agent optionally).
+- Remove hop-by-hop headers.
+
+ERROR HANDLING
+- Upstream down/unreachable -> return 502 with JSON error:
+  { "error": "upstream_unavailable" }
+- Auth failure -> 401
+- Not allowed model -> 403 with:
+  { "error": "model_not_allowed", "model": "..." }
+- Rate limit -> 429 with:
+  { "error": "rate_limited" }
+- Admin-only endpoint attempted by non-admin -> 403
+
+CONFIGURATION (env-driven)
+- OLLAMA_UPSTREAM_BASE_URL (default http://127.0.0.1:11435)
+- ENABLE_STREAMING (default true)
+- DEFAULT_RATE_LIMIT (e.g. "60/min")
+- ADMIN_ONLY_ENDPOINTS (list; default includes pull/push/create/delete/copy)
+- LOG_RETENTION_DAYS (e.g. 30)
+- ALLOWED_HOSTS / CSRF_TRUSTED_ORIGINS
+- OPTIONAL: DEFAULT_MODEL_ALLOWLIST (empty means allow all unless restricted)
+
+DEPLOYMENT
+- Use Caddy/Nginx for TLS and reverse proxy to Django on localhost.
+- Run Django as ASGI app for streaming:
+  uvicorn config.asgi:application --host 127.0.0.1 --port 8000
+- SSH tunnel (if Ollama runs on Mac) as systemd service:
+  ssh -N -p 26996 -L 127.0.0.1:11435:localhost:11434 edoardo.tedesco@openport.io
+- Ensure tunnel is always-on and restarts on failure.
+- Do NOT expose 11435 publicly.
+
+MVP SCOPE (v0.1.0)
+- Django project with apps:
+  - accounts (users)
+  - keys (API keys)
+  - gateway (Ollama proxy + policies + throttling)
+  - usage (logging + daily aggregates)
+- Web UI:
+  - user dashboard (keys + usage + recent calls)
+  - admin controls (users/keys/policies) via Django admin + minimal custom pages
+- Full streaming proxy support for /api/chat and /api/generate
+- Model allowlist policy per key (basic)
+- Rate limit per key (basic)
+- Usage tracking of calls + tokens when present
+
+SUCCESS CRITERIA
+- External user can call gateway endpoints with Api-Key and successfully reach Ollama upstream.
+- Streaming responses work end-to-end (no buffering).
+- Users can create/revoke keys and see their usage.
+- Admin can restrict allowed models per key and block admin-only endpoints.
+- Ollama remains private, reachable only from the Linux host.

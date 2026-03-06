@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}API Keys - Ollama API Hub{% endblock %}
+
+{% block content %}
+<h2>API Keys</h2>
+
+{% if new_api_key %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+  <strong>API key created!</strong> Copy it now, it won't be shown again.
+  <div class="input-group mt-2" style="max-width: 600px;">
+    <input type="text" class="form-control font-monospace" value="{{ new_api_key }}" id="newKeyValue" readonly>
+    <button class="btn btn-outline-light" type="button" onclick="copyToClipboard('newKeyValue', this)">Copy</button>
+  </div>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<div class="card mb-4">
+  <div class="card-header">Create New Key</div>
+  <div class="card-body">
+    <form method="post" action="{% url 'key_create' %}">
+      {% csrf_token %}
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Name</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. My App" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Rate Limit</label>
+          <input type="text" name="rate_limit" class="form-control" placeholder="e.g. 60/min">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Expires in</label>
+          <select name="expires_days" class="form-select">
+            <option value="">Never</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+            <option value="180">180 days</option>
+            <option value="365">1 year</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Allowed Models <small class="text-muted">(none selected = all models allowed)</small></label>
+          {% if available_models %}
+          <div class="row">
+            {% for model in available_models %}
+            <div class="col-md-3 col-sm-4 col-6">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="allowed_models" value="{{ model }}" id="model_{{ forloop.counter }}">
+                <label class="form-check-label" for="model_{{ forloop.counter }}">{{ model }}</label>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted mb-0">Could not fetch models from Ollama. All models will be allowed.</p>
+          {% endif %}
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Create Key</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Prefix</th>
+        <th>Models</th>
+        <th>Rate Limit</th>
+        <th>Status</th>
+        <th>Expires</th>
+        <th>Created</th>
+        <th>Last Used</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for key in keys %}
+      <tr>
+        <td>{{ key.name }}</td>
+        <td><code>oah_{{ key.prefix }}...</code></td>
+        <td>
+          {% if key.allowed_models %}
+            {% for m in key.allowed_models %}<span class="badge bg-secondary">{{ m }}</span> {% endfor %}
+          {% else %}
+            <span class="text-muted">All</span>
+          {% endif %}
+        </td>
+        <td>{{ key.get_rate_limit }}</td>
+        <td>
+          {% if not key.is_active %}
+            <span class="badge bg-danger">Revoked</span>
+          {% elif key.is_expired %}
+            <span class="badge bg-warning text-dark">Expired</span>
+          {% else %}
+            <span class="badge bg-success">Active</span>
+          {% endif %}
+        </td>
+        <td>{{ key.expires_at|date:"Y-m-d"|default:"Never" }}</td>
+        <td>{{ key.created_at|date:"Y-m-d" }}</td>
+        <td>{{ key.last_used_at|date:"Y-m-d H:i"|default:"-" }}</td>
+        <td>
+          {% if key.is_active and not key.is_expired %}
+          <form method="post" action="{% url 'key_revoke' key.pk %}" class="d-inline"
+                onsubmit="return confirm('Revoke this key?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm">Revoke</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-muted">No keys yet. Create one above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function copyToClipboard(inputId, btn) {
+  const input = document.getElementById(inputId);
+  navigator.clipboard.writeText(input.value).then(() => {
+    const original = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = original, 2000);
+  });
+}
+</script>
+{% endblock %}

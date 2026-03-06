@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Ollama API Hub{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <h6 class="card-subtitle text-muted">Active Keys</h6>
+        <h3>{{ active_keys }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <h6 class="card-subtitle text-muted">Total Calls</h6>
+        <h3>{{ totals.total_calls|default:"0" }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <h6 class="card-subtitle text-muted">Chat</h6>
+        <h3>{{ totals.total_chat|default:"0" }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <h6 class="card-subtitle text-muted">Generate</h6>
+        <h3>{{ totals.total_generate|default:"0" }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <h6 class="card-subtitle text-muted">Tokens In</h6>
+        <h3>{{ totals.total_tokens_in|default:"0" }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card stat-card">
+      <div class="card-body">
+        <h6 class="card-subtitle text-muted">Tokens Out</h6>
+        <h3>{{ totals.total_tokens_out|default:"0" }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h4>Daily Breakdown (Last 30 Days)</h4>
+<div class="table-responsive">
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Key</th>
+        <th>Total</th>
+        <th>Chat</th>
+        <th>Generate</th>
+        <th>Embed</th>
+        <th>2xx</th>
+        <th>4xx</th>
+        <th>5xx</th>
+        <th>Tokens In</th>
+        <th>Tokens Out</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in aggregates %}
+      <tr>
+        <td>{{ a.date }}</td>
+        <td><code>{{ a.api_key_prefix }}</code></td>
+        <td>{{ a.calls_total }}</td>
+        <td>{{ a.calls_chat }}</td>
+        <td>{{ a.calls_generate }}</td>
+        <td>{{ a.calls_embeddings }}</td>
+        <td class="text-success">{{ a.calls_2xx }}</td>
+        <td class="text-warning">{{ a.calls_4xx }}</td>
+        <td class="text-danger">{{ a.calls_5xx }}</td>
+        <td>{{ a.tokens_in_total }}</td>
+        <td>{{ a.tokens_out_total }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="11" class="text-muted">No usage data yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
