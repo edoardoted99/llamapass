@@ -5,10 +5,14 @@ A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user suppo
 ## Screenshots
 
 ### Dashboard
-![Dashboard](screens/dashboard.png)
+![Dashboard](screens/dash.png)
+
+### Test
+![Test - Chat](screens/chat.png)
+![Test - Embeddings](screens/embedding.png)
 
 ### API Keys
-![API Keys](screens/api_keys.png)
+![API Keys](screens/keys.png)
 
 ### Usage Guide
 ![Usage](screens/usage.png)
@@ -16,17 +20,33 @@ A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user suppo
 ## Features
 
 - **Multi-user** — User registration, login, password change
-- **API key management** — Create, revoke, and manage keys with optional expiration (7d, 30d, 90d, 180d, 1y)
+- **API key management** — Create, revoke, and manage keys with optional expiration
 - **Model restrictions** — Per-key allowed models via checkbox selection from available Ollama models
-- **Rate limiting** — Per-key configurable rate limits
+- **Rate limiting** — Per-key configurable rate limits with dashboard monitoring
 - **Usage tracking** — Dashboard with 30-day stats, daily breakdown by key (calls, tokens, status codes)
+- **Test page** — Built-in UI to test Chat, Generate, and Embeddings endpoints
 - **Proxy gateway** — Transparent proxy to Ollama with streaming support, respects `"stream": false`
 - **Usage guide** — Built-in page with curl, Python (OpenAI SDK, requests) examples and copy-to-clipboard
 - **Authentication** — Supports `Authorization: Api-Key`, `Authorization: Bearer` (OpenAI SDK compatible), and `X-API-Key` headers
 - **Admin-only endpoints** — Pull, push, create, delete, copy restricted to staff users
+- **Docker ready** — Docker Compose with Redis for production-grade rate limiting
 - **Dark mode** — Bootstrap 5.3 dark theme
 
 ## Quick Start
+
+### Docker (recommended)
+
+```bash
+git clone https://github.com/edoardoted99/django-api-hub-ollama.git
+cd django-api-hub-ollama
+cp .env.example .env  # edit SECRET_KEY
+docker compose up --build
+docker compose exec web python manage.py createsuperuser
+```
+
+The app runs at `http://localhost:8000`. Ollama must be running on the host machine.
+
+### Local development
 
 ```bash
 git clone https://github.com/edoardoted99/django-api-hub-ollama.git
@@ -37,11 +57,6 @@ pip install -r requirements.txt
 cp .env.example .env  # edit as needed
 python manage.py migrate
 python manage.py createsuperuser
-python manage.py runserver
-```
-
-For async support (streaming):
-```bash
 uvicorn config.asgi:application --host 0.0.0.0 --port 8000
 ```
 
@@ -59,10 +74,12 @@ Edit `.env`:
 | `ENABLE_STREAMING` | `True` | Enable streaming responses |
 | `DEFAULT_RATE_LIMIT` | `60/min` | Default rate limit per key |
 | `LOG_RETENTION_DAYS` | `30` | Days to keep request logs |
+| `REDIS_URL` | `` | Redis URL (empty = in-memory cache) |
+| `DATABASE_PATH` | `./db.sqlite3` | SQLite database path |
 
 ## API Usage
 
-After creating an API key in the web UI, use it to call the Ollama API through the gateway:
+After creating an API key in the web UI:
 
 ```bash
 curl http://your-server/ollama/api/chat \
@@ -93,8 +110,9 @@ print(response.choices[0].message.content)
 
 ## Tech Stack
 
-- Django 5.1
+- Django 5.1 + uvicorn (ASGI)
 - httpx (async proxy)
-- uvicorn (ASGI)
+- Redis (rate limiting via django-redis)
 - Bootstrap 5.3 (dark mode)
-- SQLite (default, swap for PostgreSQL in production)
+- SQLite (default)
+- Docker + Docker Compose
