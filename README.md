@@ -1,4 +1,4 @@
-# Ollama API Hub
+# LLamaPass
 
 A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user support, API key management, rate limiting, and usage tracking. Built with Django.
 
@@ -37,8 +37,8 @@ A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user suppo
 ### Docker (recommended)
 
 ```bash
-git clone https://github.com/edoardoted99/django-api-hub-ollama.git
-cd django-api-hub-ollama
+git clone https://github.com/edoardoted99/llamapass.git
+cd llamapass
 cp .env.example .env  # edit SECRET_KEY
 docker compose up --build
 docker compose exec web python manage.py createsuperuser
@@ -49,8 +49,8 @@ The app runs at `http://localhost:8000`. Ollama must be running on the host mach
 ### Local development
 
 ```bash
-git clone https://github.com/edoardoted99/django-api-hub-ollama.git
-cd django-api-hub-ollama
+git clone https://github.com/edoardoted99/llamapass.git
+cd llamapass
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
