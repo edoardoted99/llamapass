@@ -2,6 +2,8 @@
 
 A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user support, API key management, rate limiting, and usage tracking. Built with Django.
 
+**Live demo:** [llamapass.org](https://llamapass.org)
+
 ## Screenshots
 
 ### Dashboard
