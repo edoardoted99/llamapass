@@ -14,6 +14,12 @@ from usage.models import DailyAggregate, RequestLog
 from .forms import RegisterForm
 
 
+def landing(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    return render(request, "landing.html")
+
+
 def register(request):
     if request.user.is_authenticated:
         return redirect("dashboard")

@@ -1,6 +1,7 @@
 from django.urls import path
-from django.views.generic import RedirectView
+
+from accounts import views as account_views
 
 urlpatterns = [
-    path("", RedirectView.as_view(url="/dashboard/", permanent=False)),
+    path("", account_views.landing, name="landing"),
 ]
