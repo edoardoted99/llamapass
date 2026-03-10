@@ -1,0 +1,29 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_PATH=/app/db/db.sqlite3
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - OLLAMA_UPSTREAM_BASE_URL=http://host.docker.internal:11435
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    volumes:
+      - db_data:/app/db
+
+volumes:
+  redis_data:
+  db_data:

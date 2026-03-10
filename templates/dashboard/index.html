@@ -2,96 +2,437 @@
 {% block title %}Dashboard - Ollama API Hub{% endblock %}
 
 {% block content %}
-<h2>Dashboard</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0">Dashboard</h2>
+  <span class="text-muted small">Last 30 days</span>
+</div>
 
+{# ── SECTION 1: Top KPI Cards ── #}
 <div class="row g-3 mb-4">
-  <div class="col-md-2">
-    <div class="card stat-card">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100" style="border-left: 4px solid #0d6efd;">
       <div class="card-body">
-        <h6 class="card-subtitle text-muted">Active Keys</h6>
-        <h3>{{ active_keys }}</h3>
+        <p class="text-muted mb-1 small">Requests this month</p>
+        <h3 class="mb-0">{{ calls_month }}</h3>
+        <small class="text-muted">today: {{ calls_today }}</small>
       </div>
     </div>
   </div>
-  <div class="col-md-2">
-    <div class="card stat-card">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100" style="border-left: 4px solid #6f42c1;">
       <div class="card-body">
-        <h6 class="card-subtitle text-muted">Total Calls</h6>
-        <h3>{{ totals.total_calls|default:"0" }}</h3>
+        <p class="text-muted mb-1 small">Tokens used</p>
+        <h3 class="mb-0">{{ tokens_month }}</h3>
+        <small class="text-muted">in + out this month</small>
       </div>
     </div>
   </div>
-  <div class="col-md-2">
-    <div class="card stat-card">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100" style="border-left: 4px solid #fd7e14;">
       <div class="card-body">
-        <h6 class="card-subtitle text-muted">Chat</h6>
-        <h3>{{ totals.total_chat|default:"0" }}</h3>
+        <p class="text-muted mb-1 small">Avg response time</p>
+        <h3 class="mb-0">{% if avg_latency %}{{ avg_latency|floatformat:0 }}<small class="text-muted"> ms</small>{% else %}&mdash;{% endif %}</h3>
+        <small class="text-muted">30-day average</small>
       </div>
     </div>
   </div>
-  <div class="col-md-2">
-    <div class="card stat-card">
+  <div class="col-6 col-lg-3">
+    <div class="card h-100" style="border-left: 4px solid {% if error_rate > 10 %}#dc3545{% elif error_rate > 5 %}#ffc107{% else %}#198754{% endif %};">
       <div class="card-body">
-        <h6 class="card-subtitle text-muted">Generate</h6>
-        <h3>{{ totals.total_generate|default:"0" }}</h3>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2">
-    <div class="card stat-card">
-      <div class="card-body">
-        <h6 class="card-subtitle text-muted">Tokens In</h6>
-        <h3>{{ totals.total_tokens_in|default:"0" }}</h3>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-2">
-    <div class="card stat-card">
-      <div class="card-body">
-        <h6 class="card-subtitle text-muted">Tokens Out</h6>
-        <h3>{{ totals.total_tokens_out|default:"0" }}</h3>
+        <p class="text-muted mb-1 small">Error rate</p>
+        <h3 class="mb-0">{{ error_rate }}%</h3>
+        <small class="text-muted">
+          {% if top_model %}top model: <code>{{ top_model }}</code>{% else %}no data yet{% endif %}
+        </small>
       </div>
     </div>
   </div>
 </div>
 
-<h4>Daily Breakdown (Last 30 Days)</h4>
-<div class="table-responsive">
-  <table class="table table-sm table-striped">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Key</th>
-        <th>Total</th>
-        <th>Chat</th>
-        <th>Generate</th>
-        <th>Embed</th>
-        <th>2xx</th>
-        <th>4xx</th>
-        <th>5xx</th>
-        <th>Tokens In</th>
-        <th>Tokens Out</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for a in aggregates %}
-      <tr>
-        <td>{{ a.date }}</td>
-        <td><code>{{ a.api_key_prefix }}</code></td>
-        <td>{{ a.calls_total }}</td>
-        <td>{{ a.calls_chat }}</td>
-        <td>{{ a.calls_generate }}</td>
-        <td>{{ a.calls_embeddings }}</td>
-        <td class="text-success">{{ a.calls_2xx }}</td>
-        <td class="text-warning">{{ a.calls_4xx }}</td>
-        <td class="text-danger">{{ a.calls_5xx }}</td>
-        <td>{{ a.tokens_in_total }}</td>
-        <td>{{ a.tokens_out_total }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="11" class="text-muted">No usage data yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{# ── SECTION 1b: Rate Limits ── #}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    Rate Limits
+    <small class="text-muted">requests per window</small>
+  </div>
+  <div class="card-body">
+    {% for rl in rate_limits %}
+    <div class="{% if not forloop.last %}mb-3{% endif %}">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span>
+          <strong>{{ rl.name }}</strong>
+          <code class="ms-1 small text-muted">oah_{{ rl.prefix }}...</code>
+        </span>
+        <span class="small">
+          <strong>{{ rl.current }}</strong> / {{ rl.max }} <span class="text-muted">req/{{ rl.period_label }}</span>
+        </span>
+      </div>
+      <div class="progress" style="height: 8px;">
+        <div class="progress-bar {% if rl.pct >= 90 %}bg-danger{% elif rl.pct >= 70 %}bg-warning{% else %}bg-success{% endif %}"
+             role="progressbar"
+             style="width: {{ rl.pct }}%"
+             aria-valuenow="{{ rl.current }}"
+             aria-valuemin="0"
+             aria-valuemax="{{ rl.max }}">
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-muted mb-0 small">No active API keys.</p>
+    {% endfor %}
+  </div>
 </div>
+
+{# ── SECTION 2: Requests over time ── #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header">Requests over time</div>
+      <div class="card-body">
+        <canvas id="callsChart" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Endpoint distribution</div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <canvas id="distributionChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── SECTION 3: Tokens + Latency ── #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header">Tokens over time</div>
+      <div class="card-body">
+        <canvas id="tokensChart" height="110"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Response status</div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── SECTION 4: Usage per model ── #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header">Usage per model (top 10)</div>
+      <div class="card-body">
+        <canvas id="modelsChart" height="{% if models_usage|length > 5 %}140{% else %}90{% endif %}"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Model breakdown</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped mb-0">
+            <thead><tr><th>Model</th><th class="text-end">Calls</th><th class="text-end">Avg ms</th></tr></thead>
+            <tbody>
+              {% for m in models_usage %}
+              <tr>
+                <td><code class="small">{{ m.model }}</code></td>
+                <td class="text-end">{{ m.cnt }}</td>
+                <td class="text-end">{{ m.avg_lat|floatformat:0 }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-muted small">No data yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── SECTION 5: API Key & Security ── #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        API Keys
+        <a href="{% url 'key_list' %}" class="btn btn-outline-primary btn-sm">Manage</a>
+      </div>
+      <div class="card-body">
+        <div class="row text-center mb-3">
+          <div class="col-4">
+            <h4 class="mb-0 text-success">{{ active_keys }}</h4>
+            <small class="text-muted">Active</small>
+          </div>
+          <div class="col-4">
+            <h4 class="mb-0">{{ total_keys }}</h4>
+            <small class="text-muted">Total</small>
+          </div>
+          <div class="col-4">
+            <h4 class="mb-0">
+              {% if last_key_used and last_key_used.last_used_at %}
+                {{ last_key_used.last_used_at|timesince }}
+              {% else %}
+                &mdash;
+              {% endif %}
+            </h4>
+            <small class="text-muted">Last used</small>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Name</th><th>Prefix</th><th>Status</th><th>Last used</th></tr></thead>
+            <tbody>
+              {% for key in keys %}
+              <tr>
+                <td>{{ key.name }}</td>
+                <td><code>oah_{{ key.prefix }}...</code></td>
+                <td>
+                  {% if key.is_expired %}
+                    <span class="badge bg-warning text-dark">Expired</span>
+                  {% else %}
+                    <span class="badge bg-success">Active</span>
+                  {% endif %}
+                </td>
+                <td class="small text-muted">{{ key.last_used_at|date:"d M H:i"|default:"never" }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-muted small">No active keys</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── SECTION 6: Recent Errors ── #}
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        Recent errors
+        {% if recent_errors %}
+        <span class="badge bg-danger">{{ recent_errors|length }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+          <table class="table table-sm table-striped mb-0">
+            <thead class="sticky-top"><tr><th>Time</th><th>Endpoint</th><th>Status</th><th>Latency</th></tr></thead>
+            <tbody>
+              {% for e in recent_errors %}
+              <tr>
+                <td class="small text-nowrap">{{ e.timestamp|date:"d/m H:i" }}</td>
+                <td class="small"><code>{{ e.endpoint }}</code></td>
+                <td>
+                  {% if e.status_code >= 500 %}
+                    <span class="badge bg-danger">{{ e.status_code }}</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">{{ e.status_code }}</span>
+                  {% endif %}
+                </td>
+                <td class="small">{{ e.latency_ms }} ms</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-muted small text-center py-4">No errors - looking good!</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── SECTION 7: Latency over time ── #}
+<div class="card mb-4">
+  <div class="card-header">Average latency over time</div>
+  <div class="card-body">
+    <canvas id="latencyChart" height="60"></canvas>
+  </div>
+</div>
+
+{# ── SECTION 8: Daily breakdown table (collapsible) ── #}
+<div class="card mb-4">
+  <div class="card-header">
+    <a class="text-decoration-none" data-bs-toggle="collapse" href="#dailyTable" role="button" aria-expanded="false">
+      Daily breakdown (per key) &#9662;
+    </a>
+  </div>
+  <div class="collapse" id="dailyTable">
+    <div class="table-responsive">
+      <table class="table table-sm table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Date</th><th>Key</th><th>Total</th><th>Chat</th><th>Generate</th>
+            <th>Embed</th><th>2xx</th><th>4xx</th><th>5xx</th><th>Tokens In</th><th>Tokens Out</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in aggregates %}
+          <tr>
+            <td>{{ a.date }}</td>
+            <td><code>{{ a.api_key_prefix }}</code></td>
+            <td>{{ a.calls_total }}</td>
+            <td>{{ a.calls_chat }}</td>
+            <td>{{ a.calls_generate }}</td>
+            <td>{{ a.calls_embeddings }}</td>
+            <td class="text-success">{{ a.calls_2xx }}</td>
+            <td class="text-warning">{{ a.calls_4xx }}</td>
+            <td class="text-danger">{{ a.calls_5xx }}</td>
+            <td>{{ a.tokens_in_total }}</td>
+            <td>{{ a.tokens_out_total }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="11" class="text-muted">No usage data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const data = JSON.parse('{{ daily_chart_json|escapejs }}');
+  const modelsData = JSON.parse('{{ models_chart_json|escapejs }}');
+  const labels = data.map(d => d.date);
+
+  /* ── Dark theme defaults ── */
+  const gridColor = 'rgba(255,255,255,0.06)';
+  const tickColor = 'rgba(255,255,255,0.5)';
+  Chart.defaults.color = tickColor;
+
+  const commonScales = {
+    x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 10 } },
+    y: { grid: { color: gridColor }, beginAtZero: true }
+  };
+
+  /* ── 1. Requests line chart ── */
+  new Chart(document.getElementById('callsChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Total', data: data.map(d => d.calls), borderColor: '#0d6efd',
+          backgroundColor: 'rgba(13,110,253,0.08)', fill: true, tension: 0.3 },
+        { label: 'Chat', data: data.map(d => d.chat), borderColor: '#20c997',
+          tension: 0.3, borderDash: [] },
+        { label: 'Generate', data: data.map(d => d.generate), borderColor: '#6f42c1',
+          tension: 0.3 },
+        { label: 'Embeddings', data: data.map(d => d.embeddings), borderColor: '#fd7e14',
+          tension: 0.3, borderDash: [4, 4] }
+      ]
+    },
+    options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales: commonScales }
+  });
+
+  /* ── 2. Endpoint distribution doughnut ── */
+  const chat = {{ totals.total_chat|default:"0" }};
+  const gen = {{ totals.total_generate|default:"0" }};
+  const emb = {{ totals.total_embeddings|default:"0" }};
+  const hasDist = chat + gen + emb > 0;
+  new Chart(document.getElementById('distributionChart'), {
+    type: 'doughnut',
+    data: {
+      labels: hasDist ? ['Chat', 'Generate', 'Embeddings'] : ['No data'],
+      datasets: [{
+        data: hasDist ? [chat, gen, emb] : [1],
+        backgroundColor: hasDist ? ['#20c997', '#6f42c1', '#fd7e14'] : ['rgba(255,255,255,0.06)'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, cutout: '65%',
+      plugins: { legend: { position: 'bottom', labels: { padding: 16 } }, tooltip: { enabled: hasDist } }
+    }
+  });
+
+  /* ── 3. Tokens bar chart ── */
+  new Chart(document.getElementById('tokensChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Tokens In', data: data.map(d => d.tokens_in),
+          backgroundColor: 'rgba(13,110,253,0.6)', borderRadius: 3 },
+        { label: 'Tokens Out', data: data.map(d => d.tokens_out),
+          backgroundColor: 'rgba(111,66,193,0.6)', borderRadius: 3 }
+      ]
+    },
+    options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales: commonScales }
+  });
+
+  /* ── 4. Status codes doughnut ── */
+  const s2 = {{ totals.total_2xx|default:"0" }};
+  const s4 = {{ totals.total_4xx|default:"0" }};
+  const s5 = {{ totals.total_5xx|default:"0" }};
+  const hasSt = s2 + s4 + s5 > 0;
+  new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: hasSt ? ['2xx OK', '4xx Client', '5xx Server'] : ['No data'],
+      datasets: [{
+        data: hasSt ? [s2, s4, s5] : [1],
+        backgroundColor: hasSt ? ['#198754', '#ffc107', '#dc3545'] : ['rgba(255,255,255,0.06)'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, cutout: '65%',
+      plugins: { legend: { position: 'bottom', labels: { padding: 16 } }, tooltip: { enabled: hasSt } }
+    }
+  });
+
+  /* ── 5. Models horizontal bar chart ── */
+  const modelColors = ['#0d6efd','#20c997','#6f42c1','#fd7e14','#dc3545','#ffc107','#0dcaf0','#198754','#d63384','#adb5bd'];
+  new Chart(document.getElementById('modelsChart'), {
+    type: 'bar',
+    data: {
+      labels: modelsData.map(m => m.model),
+      datasets: [{
+        label: 'Requests',
+        data: modelsData.map(m => m.count),
+        backgroundColor: modelsData.map((_, i) => modelColors[i % modelColors.length]),
+        borderRadius: 3
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      scales: {
+        x: { grid: { color: gridColor }, beginAtZero: true },
+        y: { grid: { display: false } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  /* ── 6. Latency line chart ── */
+  new Chart(document.getElementById('latencyChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Avg Latency (ms)',
+        data: data.map(d => d.latency),
+        borderColor: '#fd7e14',
+        backgroundColor: 'rgba(253,126,20,0.08)',
+        fill: true, tension: 0.3, pointRadius: 3
+      }]
+    },
+    options: { responsive: true, scales: commonScales }
+  });
+})();
+</script>
 {% endblock %}

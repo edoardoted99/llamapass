@@ -1,0 +1,55 @@
+# ══════════════════════════════════════════════
+#  Django API Hub Ollama — Commands Reference
+# ══════════════════════════════════════════════
+
+# ── Setup ──────────────────────────────────────
+cp .env.example .env                          # crea file env (editare SECRET_KEY)
+python -m venv .venv                          # crea virtualenv
+source .venv/bin/activate                     # attiva virtualenv
+pip install -r requirements.txt               # installa dipendenze
+python manage.py migrate                      # applica migrazioni
+python manage.py createsuperuser              # crea utente admin
+python manage.py collectstatic --noinput      # raccoglie file statici
+
+# ── Dev locale ─────────────────────────────────
+python manage.py runserver                    # avvia server Django (HTTP)
+uvicorn config.asgi:application --reload      # avvia server ASGI (async, streaming)
+
+# ── Docker ─────────────────────────────────────
+docker compose up --build                     # build + avvia (Django + Redis)
+docker compose up -d                          # avvia in background
+docker compose down                           # ferma i container
+docker compose logs -f web                    # segui i log dell'app
+docker compose logs -f redis                  # segui i log di Redis
+docker compose exec web python manage.py createsuperuser   # crea admin in Docker
+docker compose exec web python manage.py shell             # shell Django in Docker
+
+# ── Docker — rebuild e reset ───────────────────
+docker compose up --build -d                  # rebuild e avvia in background
+docker compose down -v                        # ferma e cancella volumi (DB + Redis)
+
+# ── Gestione DB ────────────────────────────────
+python manage.py makemigrations               # genera nuove migrazioni
+python manage.py migrate                      # applica migrazioni
+python manage.py shell                        # shell interattiva Django
+python manage.py cleanup_logs                 # pulisce log vecchi (LOG_RETENTION_DAYS)
+
+# ── Test API ───────────────────────────────────
+# Lista modelli
+curl http://127.0.0.1:8000/ollama/api/tags \
+  -H "Authorization: Bearer oah_YOUR_KEY"
+
+# Generate (streaming)
+curl http://127.0.0.1:8000/ollama/api/generate \
+  -H "Authorization: Bearer oah_YOUR_KEY" \
+  -d '{"model": "llama3.2", "prompt": "Ciao!"}'
+
+# Chat (non-streaming)
+curl http://127.0.0.1:8000/ollama/api/chat \
+  -H "Authorization: Bearer oah_YOUR_KEY" \
+  -d '{"model": "llama3.2", "stream": false, "messages": [{"role": "user", "content": "Ciao!"}]}'
+
+# Embeddings
+curl http://127.0.0.1:8000/ollama/api/embed \
+  -H "Authorization: Bearer oah_YOUR_KEY" \
+  -d '{"model": "nomic-embed-text", "input": "testo da embeddare"}'

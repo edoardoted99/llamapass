@@ -5,7 +5,11 @@ from django.core.cache import cache
 
 def parse_rate(rate_string):
     """Parse rate string like '60/min' into (count, seconds)."""
-    count, period = rate_string.split("/")
+    parts = rate_string.split("/")
+    if len(parts) != 2:
+        from django.conf import settings
+        return parse_rate(settings.DEFAULT_RATE_LIMIT)
+    count, period = parts
     count = int(count)
     periods = {"sec": 1, "min": 60, "hour": 3600, "day": 86400}
     seconds = periods.get(period, 60)

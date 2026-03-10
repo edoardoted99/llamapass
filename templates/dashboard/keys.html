@@ -125,11 +125,20 @@
 <script>
 function copyToClipboard(inputId, btn) {
   const input = document.getElementById(inputId);
-  navigator.clipboard.writeText(input.value).then(() => {
-    const original = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = original, 2000);
-  });
+  const text = input.value;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => showCopied(btn));
+  } else {
+    input.select();
+    document.execCommand('copy');
+    window.getSelection().removeAllRanges();
+    showCopied(btn);
+  }
+}
+function showCopied(btn) {
+  const original = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = original, 2000);
 }
 </script>
 {% endblock %}

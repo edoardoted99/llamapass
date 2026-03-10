@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block title %}Test - Ollama API Hub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0">Test</h2>
+</div>
+
+{# ── Controls ── #}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <label class="form-label small text-muted">Model</label>
+    <select id="pg-model" class="form-select form-select-sm">
+      {% for m in available_models %}
+      <option value="{{ m }}">{{ m }}</option>
+      {% empty %}
+      <option value="" disabled>No models available</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label small text-muted">API Key</label>
+    <select id="pg-key-select" class="form-select form-select-sm">
+      {% for key in keys %}
+      <option value="">{{ key.name }} ({{ key.prefix }}...)</option>
+      {% empty %}
+      <option value="" disabled>No active keys</option>
+      {% endfor %}
+    </select>
+    <input type="text" id="pg-key" class="form-control form-control-sm mt-1" placeholder="oah_... (paste full key here)">
+  </div>
+  <div class="col-md-4">
+    <label class="form-label small text-muted">System prompt (chat only)</label>
+    <input type="text" id="pg-system" class="form-control form-control-sm" placeholder="You are a helpful assistant.">
+  </div>
+</div>
+
+{# ── Tabs ── #}
+<ul class="nav nav-tabs mb-0" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-chat" type="button" role="tab">Chat</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-generate" type="button" role="tab">Generate</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-embeddings" type="button" role="tab">Embeddings</button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  {# ── Chat tab ── #}
+  <div class="tab-pane fade show active" id="tab-chat" role="tabpanel">
+    <div class="card border-top-0 rounded-top-0">
+      <div class="card-body p-0">
+        {# Chat history #}
+        <div id="chat-history" class="p-3" style="min-height: 300px; max-height: 500px; overflow-y: auto;">
+          <div class="text-muted text-center small py-5">Start a conversation</div>
+        </div>
+
+        {# Input #}
+        <div class="border-top p-3">
+          <div class="d-flex gap-2">
+            <textarea id="chat-input" class="form-control form-control-sm" rows="2" placeholder="Type a message..."
+                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();pgSendChat()}"></textarea>
+            <div class="d-flex flex-column gap-1">
+              <button class="btn btn-primary btn-sm" onclick="pgSendChat()" id="chat-send">Send</button>
+              <button class="btn btn-outline-secondary btn-sm" onclick="pgClearChat()">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Generate tab ── #}
+  <div class="tab-pane fade" id="tab-generate" role="tabpanel">
+    <div class="card border-top-0 rounded-top-0">
+      <div class="card-body">
+        <label class="form-label small text-muted">Prompt</label>
+        <textarea id="gen-input" class="form-control form-control-sm" rows="3" placeholder="Why is the sky blue?"></textarea>
+        <div class="d-flex justify-content-end mt-2">
+          <button class="btn btn-primary btn-sm" onclick="pgSendGenerate()" id="gen-send">Send</button>
+        </div>
+
+        <div id="gen-output" class="mt-3 d-none">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small text-muted">Response <span id="gen-meta"></span></span>
+            <button class="btn btn-outline-secondary btn-sm" onclick="pgCopy('gen-response')">Copy</button>
+          </div>
+          <pre class="bg-body-tertiary p-3 rounded mb-0" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;"><code id="gen-response"></code></pre>
+        </div>
+        <div id="gen-loading" class="mt-3 d-none">
+          <div class="d-flex align-items-center text-muted">
+            <div class="spinner-border spinner-border-sm me-2"></div> Generating...
+          </div>
+        </div>
+        <div id="gen-error" class="alert alert-danger mt-3 d-none mb-0"></div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Embeddings tab ── #}
+  <div class="tab-pane fade" id="tab-embeddings" role="tabpanel">
+    <div class="card border-top-0 rounded-top-0">
+      <div class="card-body">
+        <label class="form-label small text-muted">Input text</label>
+        <textarea id="emb-input" class="form-control form-control-sm" rows="3" placeholder="The quick brown fox jumps over the lazy dog"></textarea>
+        <div class="d-flex justify-content-end mt-2">
+          <button class="btn btn-primary btn-sm" onclick="pgSendEmbed()" id="emb-send">Send</button>
+        </div>
+
+        <div id="emb-output" class="mt-3 d-none">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small text-muted">Result <span id="emb-meta"></span></span>
+            <button class="btn btn-outline-secondary btn-sm" onclick="pgCopy('emb-response')">Copy</button>
+          </div>
+          <pre class="bg-body-tertiary p-3 rounded mb-0" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;"><code id="emb-response"></code></pre>
+        </div>
+        <div id="emb-loading" class="mt-3 d-none">
+          <div class="d-flex align-items-center text-muted">
+            <div class="spinner-border spinner-border-sm me-2"></div> Computing embeddings...
+          </div>
+        </div>
+        <div id="emb-error" class="alert alert-danger mt-3 d-none mb-0"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const BASE = window.location.origin + '/ollama/';
+  let chatMessages = [];  // conversation history
+
+  function getApiKey() {
+    const key = document.getElementById('pg-key').value.trim();
+    if (!key || !key.startsWith('oah_')) {
+      throw new Error('Paste a full API key (starts with oah_) in the key field');
+    }
+    return key;
+  }
+
+  function getModel() {
+    const m = document.getElementById('pg-model').value;
+    if (!m) throw new Error('Select a model');
+    return m;
+  }
+
+  function apiCall(endpoint, body) {
+    const apiKey = getApiKey();
+    return fetch(BASE + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Api-Key ' + apiKey },
+      body: JSON.stringify(body)
+    }).then(resp => {
+      if (!resp.ok) return resp.text().then(t => { throw new Error('HTTP ' + resp.status + ': ' + t); });
+      return resp.json();
+    });
+  }
+
+  function formatMeta(data, elapsed) {
+    let parts = [elapsed + 'ms'];
+    if (data.eval_count) parts.push(data.eval_count + ' tokens');
+    if (data.total_duration) parts.push('total: ' + Math.round(data.total_duration / 1e6) + 'ms');
+    return '(' + parts.join(' | ') + ')';
+  }
+
+  /* ── Chat ── */
+  function renderChat() {
+    const el = document.getElementById('chat-history');
+    if (chatMessages.length === 0) {
+      el.innerHTML = '<div class="text-muted text-center small py-5">Start a conversation</div>';
+      return;
+    }
+    let html = '';
+    for (const msg of chatMessages) {
+      if (msg.role === 'system') continue;
+      const isUser = msg.role === 'user';
+      const align = isUser ? 'justify-content-end' : 'justify-content-start';
+      const bg = isUser ? 'bg-primary text-white' : 'bg-body-tertiary';
+      html += '<div class="d-flex ' + align + ' mb-2">';
+      html += '<div class="' + bg + ' rounded px-3 py-2" style="max-width: 80%; white-space: pre-wrap;">';
+      html += escapeHtml(msg.content);
+      if (msg._meta) html += '<div class="small opacity-50 mt-1">' + escapeHtml(msg._meta) + '</div>';
+      html += '</div></div>';
+    }
+    el.innerHTML = html;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  window.pgSendChat = function() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    let model;
+    try { model = getModel(); getApiKey(); } catch(e) { alert(e.message); return; }
+
+    // Add system prompt if first message
+    if (chatMessages.length === 0) {
+      const sys = document.getElementById('pg-system').value.trim();
+      if (sys) chatMessages.push({ role: 'system', content: sys });
+    }
+
+    chatMessages.push({ role: 'user', content: msg });
+    input.value = '';
+    renderChat();
+
+    document.getElementById('chat-send').disabled = true;
+
+    // Add loading indicator
+    const historyEl = document.getElementById('chat-history');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'd-flex justify-content-start mb-2';
+    loadingDiv.id = 'chat-loading';
+    loadingDiv.innerHTML = '<div class="bg-body-tertiary rounded px-3 py-2"><div class="spinner-border spinner-border-sm"></div></div>';
+    historyEl.appendChild(loadingDiv);
+    historyEl.scrollTop = historyEl.scrollHeight;
+
+    const t0 = performance.now();
+    // Send full conversation history
+    const messagesForApi = chatMessages.filter(m => !m._meta).map(m => ({ role: m.role, content: m.content }));
+
+    apiCall('api/chat', { model: model, messages: messagesForApi, stream: false })
+    .then(data => {
+      const elapsed = Math.round(performance.now() - t0);
+      const reply = data.message ? data.message.content : JSON.stringify(data);
+      chatMessages.push({ role: 'assistant', content: reply, _meta: formatMeta(data, elapsed) });
+      renderChat();
+    })
+    .catch(err => {
+      chatMessages.push({ role: 'assistant', content: 'Error: ' + err.message, _meta: '' });
+      renderChat();
+    })
+    .finally(() => {
+      document.getElementById('chat-send').disabled = false;
+      const ld = document.getElementById('chat-loading');
+      if (ld) ld.remove();
+    });
+  };
+
+  window.pgClearChat = function() {
+    chatMessages = [];
+    renderChat();
+  };
+
+  /* ── Generate ── */
+  window.pgSendGenerate = function() {
+    const prompt = document.getElementById('gen-input').value.trim();
+    if (!prompt) return;
+
+    let model;
+    try { model = getModel(); getApiKey(); } catch(e) { alert(e.message); return; }
+
+    document.getElementById('gen-output').classList.add('d-none');
+    document.getElementById('gen-error').classList.add('d-none');
+    document.getElementById('gen-loading').classList.remove('d-none');
+    document.getElementById('gen-send').disabled = true;
+
+    const t0 = performance.now();
+    apiCall('api/generate', { model: model, prompt: prompt, stream: false })
+    .then(data => {
+      const elapsed = Math.round(performance.now() - t0);
+      document.getElementById('gen-response').textContent = data.response || JSON.stringify(data, null, 2);
+      document.getElementById('gen-meta').textContent = formatMeta(data, elapsed);
+      document.getElementById('gen-output').classList.remove('d-none');
+    })
+    .catch(err => {
+      const el = document.getElementById('gen-error');
+      el.textContent = err.message;
+      el.classList.remove('d-none');
+    })
+    .finally(() => {
+      document.getElementById('gen-loading').classList.add('d-none');
+      document.getElementById('gen-send').disabled = false;
+    });
+  };
+
+  /* ── Embeddings ── */
+  window.pgSendEmbed = function() {
+    const text = document.getElementById('emb-input').value.trim();
+    if (!text) return;
+
+    let model;
+    try { model = getModel(); getApiKey(); } catch(e) { alert(e.message); return; }
+
+    document.getElementById('emb-output').classList.add('d-none');
+    document.getElementById('emb-error').classList.add('d-none');
+    document.getElementById('emb-loading').classList.remove('d-none');
+    document.getElementById('emb-send').disabled = true;
+
+    const t0 = performance.now();
+    apiCall('api/embed', { model: model, input: text })
+    .then(data => {
+      const elapsed = Math.round(performance.now() - t0);
+      const emb = data.embeddings || data.embedding;
+      let display;
+      if (emb) {
+        const arr = Array.isArray(emb[0]) ? emb[0] : emb;
+        display = 'Dimensions: ' + arr.length + '\n\n'
+                + 'First 20 values:\n[' + arr.slice(0, 20).map(v => v.toFixed(6)).join(', ') + ', ...]\n\n'
+                + 'Full vector available via Copy button.';
+      } else {
+        display = JSON.stringify(data, null, 2);
+      }
+      document.getElementById('emb-response').textContent = display;
+      document.getElementById('emb-response')._fullData = emb ? JSON.stringify(emb) : JSON.stringify(data);
+      document.getElementById('emb-meta').textContent = '(' + elapsed + 'ms)';
+      document.getElementById('emb-output').classList.remove('d-none');
+    })
+    .catch(err => {
+      const el = document.getElementById('emb-error');
+      el.textContent = err.message;
+      el.classList.remove('d-none');
+    })
+    .finally(() => {
+      document.getElementById('emb-loading').classList.add('d-none');
+      document.getElementById('emb-send').disabled = false;
+    });
+  };
+
+  /* ── Copy helper ── */
+  window.pgCopy = function(elementId) {
+    const el = document.getElementById(elementId);
+    const text = el._fullData || el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = el.closest('.tab-pane, .card-body').querySelector('[onclick*="pgCopy"]');
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+      }
+    });
+  };
+})();
+</script>
+{% endblock %}
