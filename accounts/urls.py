@@ -5,7 +5,7 @@ from . import views as account_views
 
 urlpatterns = [
     path("login/", account_views.custom_login, name="login"),
-    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("logout/", auth_views.LogoutView.as_view(http_method_names=["get", "post", "options"]), name="logout"),
     path("register/", account_views.register, name="register"),
     path("pending/", account_views.pending, name="pending"),
     path(
