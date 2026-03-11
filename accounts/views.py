@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, Max, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -364,9 +364,79 @@ def user_management(request):
         "-created_at"
     )
 
+    # ── Per-user usage stats (30 days) ──
+    thirty_days_ago = timezone.now().date() - timezone.timedelta(days=30)
+    user_stats = {}
+    agg_qs = (
+        DailyAggregate.objects.filter(
+            user__is_staff=False, date__gte=thirty_days_ago
+        )
+        .values("user_id")
+        .annotate(
+            total_calls=Sum("calls_total"),
+            total_tokens_in=Sum("tokens_in_total"),
+            total_tokens_out=Sum("tokens_out_total"),
+            avg_latency=Avg("avg_latency_ms"),
+        )
+    )
+    for row in agg_qs:
+        user_stats[row["user_id"]] = {
+            "calls": row["total_calls"] or 0,
+            "tokens_in": row["total_tokens_in"] or 0,
+            "tokens_out": row["total_tokens_out"] or 0,
+            "tokens_total": (row["total_tokens_in"] or 0)
+                            + (row["total_tokens_out"] or 0),
+            "avg_latency": round(row["avg_latency"] or 0),
+        }
+
+    # Last activity per user
+    last_activity_qs = (
+        RequestLog.objects.filter(user__is_staff=False)
+        .values("user_id")
+        .annotate(last_seen=Max("timestamp"))
+    )
+    last_activity = {row["user_id"]: row["last_seen"] for row in last_activity_qs}
+
+    # Top model per user
+    top_models_qs = (
+        RequestLog.objects.filter(
+            user__is_staff=False,
+            timestamp__date__gte=thirty_days_ago,
+        )
+        .exclude(model="")
+        .values("user_id", "model")
+        .annotate(cnt=Count("id"))
+        .order_by("user_id", "-cnt")
+    )
+    top_model_per_user = {}
+    for row in top_models_qs:
+        if row["user_id"] not in top_model_per_user:
+            top_model_per_user[row["user_id"]] = row["model"]
+
+    # Attach stats to users
+    for u in users:
+        u.usage = user_stats.get(u.pk, {
+            "calls": 0, "tokens_in": 0, "tokens_out": 0,
+            "tokens_total": 0, "avg_latency": 0,
+        })
+        u.last_seen = last_activity.get(u.pk)
+        u.top_model = top_model_per_user.get(u.pk)
+
+    # Global totals (30 days, non-staff)
+    global_stats = (
+        DailyAggregate.objects.filter(
+            user__is_staff=False, date__gte=thirty_days_ago
+        ).aggregate(
+            total_calls=Sum("calls_total"),
+            total_tokens=Sum("tokens_in_total") + Sum("tokens_out_total"),
+        )
+    )
+
     return render(request, "dashboard/users.html", {
         "users": users,
         "pending_count": pending_count,
         "approved_count": approved_count,
         "invite_codes": invite_codes,
+        "global_calls": global_stats["total_calls"] or 0,
+        "global_tokens": global_stats["total_tokens"] or 0,
     })
