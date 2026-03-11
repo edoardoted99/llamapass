@@ -165,6 +165,8 @@
 
   <!-- Hero -->
   <section class="hero">
+    {% load static %}
+    <img src="{% static 'ollama.png' %}" alt="LLamaPass" style="width: 120px; height: 120px; margin-bottom: 1.5rem; position: relative; filter: invert(1);">
     <h1>Your Ollama.<br><span>One gateway. Every user.</span></h1>
     <p>Self-hosted API gateway for Ollama with multi-user support, API key management, rate limiting, and real-time usage tracking.</p>
   </section>
