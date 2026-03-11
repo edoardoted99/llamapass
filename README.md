@@ -4,20 +4,20 @@ A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user suppo
 
 ## Screenshots
 
-### Landing Page & Dashboard
+### Dashboard
 ![Dashboard](screens/dashboard.png)
 
 ### API Keys
 ![API Keys](screens/keys.png)
-
-### Built-in Chat Test
-![Chat](screens/chat.png)
 
 ### User Management & Invite Codes
 ![User Management](screens/invitations.png)
 
 ### Usage Guide
 ![Usage](screens/usage.png)
+
+### Built-in Chat Test
+![Chat](screens/chat.png)
 
 ## Features
 

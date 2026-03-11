@@ -10,5 +10,6 @@ build/
 .venv/
 venv/
 ollama-tunnel.sh
-*.png
+/*.png
 !static/*.png
+!screens/*.png
