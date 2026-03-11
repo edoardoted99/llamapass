@@ -171,30 +171,30 @@
 
   <!-- Two paths -->
   <section class="paths">
-    <h2>Choose your path</h2>
-    <p class="subtitle">Use the public demo or deploy your own instance</p>
+    <h2>Get started</h2>
+    <p class="subtitle">LLamaPass is open-source software you install on your server to manage access to Ollama</p>
     <div class="paths-grid">
 
       <div class="path-card demo">
-        <span class="path-label">Public demo</span>
-        <h3>Try LLamaPass now</h3>
-        <p>Create an account on our public instance and start using LLM models through the API right away.</p>
+        <span class="path-label">Join this server</span>
+        <h3>Use this instance</h3>
+        <p>The admin of this server has shared LLamaPass with you. Register with your invite code to get access.</p>
         <ul>
-          <li>Register and get approved by an admin</li>
+          <li>Register with an invite code for instant access</li>
           <li>Generate your API key from the dashboard</li>
-          <li>Start calling models via API or OpenAI SDK</li>
+          <li>Call models via API or OpenAI SDK</li>
         </ul>
-        <a href="{% url 'register' %}" class="btn-accent">Request Access</a>
+        <a href="{% url 'register' %}" class="btn-accent">Register</a>
       </div>
 
       <div class="path-card selfhost">
-        <span class="path-label">Self-hosted</span>
-        <h3>Install on your server</h3>
-        <p>Clone the repo and deploy with Docker. Full control over your data, models, and user access.</p>
+        <span class="path-label">Deploy your own</span>
+        <h3>Run LLamaPass on your server</h3>
+        <p>Install LLamaPass with Docker to manage multi-user access to your own Ollama instance.</p>
         <ul>
           <li>Clone and run with a single Docker command</li>
-          <li>Connect to your own Ollama instance</li>
-          <li>Manage users, keys, and rate limits</li>
+          <li>Connect to your Ollama instance</li>
+          <li>Invite users and manage their access</li>
         </ul>
         <a href="https://github.com/edoardoted99/llamapass" class="btn-ghost" target="_blank">View on GitHub</a>
       </div>

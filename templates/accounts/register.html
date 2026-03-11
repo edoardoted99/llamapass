@@ -9,13 +9,8 @@
       <div class="card-body">
         <form method="post">
           {% csrf_token %}
-          {% if form.errors %}
+          {% if form.non_field_errors %}
           <div class="alert alert-danger">
-            {% for field in form %}
-              {% for error in field.errors %}
-                <div>{{ error }}</div>
-              {% endfor %}
-            {% endfor %}
             {% for error in form.non_field_errors %}
               <div>{{ error }}</div>
             {% endfor %}
@@ -23,7 +18,8 @@
           {% endif %}
           <div class="mb-3">
             <label for="id_username" class="form-label">Username</label>
-            <input type="text" name="username" id="id_username" class="form-control" value="{{ form.username.value|default:'' }}" autofocus required>
+            <input type="text" name="username" id="id_username" class="form-control{% if form.username.errors %} is-invalid{% endif %}" value="{{ form.username.value|default:'' }}" autofocus required>
+            {% for error in form.username.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
           </div>
           <div class="mb-3">
             <label for="id_email" class="form-label">Email</label>
@@ -31,11 +27,20 @@
           </div>
           <div class="mb-3">
             <label for="id_password1" class="form-label">Password</label>
-            <input type="password" name="password1" id="id_password1" class="form-control" required>
+            <input type="password" name="password1" id="id_password1" class="form-control{% if form.password1.errors %} is-invalid{% endif %}" required>
+            {% for error in form.password1.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
           </div>
           <div class="mb-3">
             <label for="id_password2" class="form-label">Confirm Password</label>
-            <input type="password" name="password2" id="id_password2" class="form-control" required>
+            <input type="password" name="password2" id="id_password2" class="form-control{% if form.password2.errors %} is-invalid{% endif %}" required>
+            {% for error in form.password2.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+          </div>
+          <hr>
+          <div class="mb-3">
+            <label for="id_invite_code" class="form-label">Invite Code</label>
+            <input type="text" name="invite_code" id="id_invite_code" class="form-control{% if form.invite_code.errors %} is-invalid{% endif %}" value="{{ form.invite_code.value|default:'' }}" placeholder="INV-xxxxxxxx">
+            {% for error in form.invite_code.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+            <div class="form-text">Have an invite code? Enter it to get instant access. Without a code, your account will need admin approval.</div>
           </div>
           <button type="submit" class="btn btn-primary w-100">Register</button>
         </form>

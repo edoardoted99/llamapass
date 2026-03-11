@@ -13,7 +13,7 @@ from keys.models import ApiKey
 from usage.models import DailyAggregate, RequestLog
 
 from .forms import RegisterForm
-from .models import UserProfile
+from .models import InviteCode, UserProfile
 
 
 def landing(request):
@@ -28,12 +28,41 @@ def register(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.info(
-                request,
-                "Account created. An admin will review and approve your registration.",
-            )
-            return redirect("login")
+            raw_code = form.cleaned_data.get("invite_code", "").strip()
+            invite = None
+
+            if raw_code:
+                try:
+                    invite = InviteCode.objects.get(code=raw_code)
+                except InviteCode.DoesNotExist:
+                    form.add_error("invite_code", "Invalid invite code.")
+                    return render(
+                        request, "accounts/register.html", {"form": form}
+                    )
+                if not invite.is_valid:
+                    form.add_error(
+                        "invite_code", "This invite code has expired or been used up."
+                    )
+                    return render(
+                        request, "accounts/register.html", {"form": form}
+                    )
+
+            user = form.save()
+
+            if invite:
+                invite.use()
+                user.profile.is_approved = True
+                user.profile.invite_code_used = invite
+                user.profile.save()
+                login(request, user)
+                messages.success(request, "Account created and approved. Welcome!")
+                return redirect("dashboard")
+            else:
+                messages.info(
+                    request,
+                    "Account created. An admin will review and approve your registration.",
+                )
+                return redirect("login")
     else:
         form = RegisterForm()
     return render(request, "accounts/register.html", {"form": form})
@@ -263,11 +292,41 @@ def user_management(request):
         return redirect("dashboard")
 
     if request.method == "POST":
-        user_id = request.POST.get("user_id")
         action = request.POST.get("action")
+
+        # ── Invite code actions ──
+        if action == "create_invite":
+            label = request.POST.get("label", "").strip()
+            max_uses = int(request.POST.get("max_uses", 1) or 1)
+            expires_days = request.POST.get("expires_days", "")
+            expires_at = None
+            if expires_days:
+                expires_at = timezone.now() + timezone.timedelta(
+                    days=int(expires_days)
+                )
+            code = InviteCode.generate_code()
+            InviteCode.objects.create(
+                code=code,
+                created_by=request.user,
+                label=label,
+                max_uses=max_uses,
+                expires_at=expires_at,
+            )
+            messages.success(request, f"Invite code created: {code}")
+            return redirect("user_management")
+
+        if action == "deactivate_invite":
+            invite_id = request.POST.get("invite_id")
+            invite = get_object_or_404(InviteCode, pk=invite_id)
+            invite.is_active = False
+            invite.save()
+            messages.warning(request, f"Invite code {invite.code} deactivated.")
+            return redirect("user_management")
+
+        # ── User actions ──
+        user_id = request.POST.get("user_id")
         target_user = get_object_or_404(User, pk=user_id)
 
-        # Don't allow modifying staff/superusers
         if target_user.is_staff or target_user.is_superuser:
             messages.error(request, "Cannot modify admin users.")
             return redirect("user_management")
@@ -290,7 +349,7 @@ def user_management(request):
 
     users = (
         User.objects.filter(is_staff=False)
-        .select_related("profile")
+        .select_related("profile", "profile__invite_code_used")
         .order_by("-date_joined")
     )
 
@@ -301,8 +360,13 @@ def user_management(request):
         is_approved=True, user__is_staff=False
     ).count()
 
+    invite_codes = InviteCode.objects.select_related("created_by").order_by(
+        "-created_at"
+    )
+
     return render(request, "dashboard/users.html", {
         "users": users,
         "pending_count": pending_count,
         "approved_count": approved_count,
+        "invite_codes": invite_codes,
     })
