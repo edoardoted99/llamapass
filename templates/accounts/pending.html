@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Pending Approval - LLamaPass{% endblock %}
+
+{% block content_anonymous %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5 text-center">
+    <div class="card">
+      <div class="card-body py-5">
+        <div style="font-size: 3rem;">&#9203;</div>
+        <h3 class="mt-3 mb-3">Account Pending Approval</h3>
+        <p class="text-muted mb-4">
+          Your account has been created but is waiting for admin approval.<br>
+          You'll be able to access the dashboard once an administrator approves your registration.
+        </p>
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-light">Logout</button>
+        </form>
+        {% else %}
+        <a href="{% url 'login' %}" class="btn btn-outline-light">Back to Login</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5 text-center">
+    <div class="card">
+      <div class="card-body py-5">
+        <div style="font-size: 3rem;">&#9203;</div>
+        <h3 class="mt-3 mb-3">Account Pending Approval</h3>
+        <p class="text-muted mb-4">
+          Your account is waiting for admin approval.<br>
+          You'll be able to access the dashboard once approved.
+        </p>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-light">Logout</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -52,6 +52,14 @@ async def proxy_ollama(request, path):
 
     user = api_key.user
 
+    # 1.5 Check user approval
+    if not user.is_staff:
+        is_approved = await sync_to_async(
+            lambda: hasattr(user, "profile") and user.profile.is_approved
+        )()
+        if not is_approved:
+            return JsonResponse({"error": "account_not_approved"}, status=403)
+
     # 2. Admin-only endpoint check
     if path in settings.ADMIN_ONLY_ENDPOINTS:
         is_staff = await sync_to_async(lambda: api_key.user.is_staff)()

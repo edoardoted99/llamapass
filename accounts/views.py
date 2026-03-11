@@ -1,10 +1,11 @@
 import json
 
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.db.models import Avg, Count, Sum
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from gateway.throttle import parse_rate
@@ -12,6 +13,7 @@ from keys.models import ApiKey
 from usage.models import DailyAggregate, RequestLog
 
 from .forms import RegisterForm
+from .models import UserProfile
 
 
 def landing(request):
@@ -26,13 +28,40 @@ def register(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, "Account created successfully.")
-            return redirect("dashboard")
+            form.save()
+            messages.info(
+                request,
+                "Account created. An admin will review and approve your registration.",
+            )
+            return redirect("login")
     else:
         form = RegisterForm()
     return render(request, "accounts/register.html", {"form": form})
+
+
+def custom_login(request):
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    error = None
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            if user.is_staff or (
+                hasattr(user, "profile") and user.profile.is_approved
+            ):
+                login(request, user)
+                return redirect(request.GET.get("next", "dashboard"))
+            else:
+                error = "pending"
+        else:
+            error = "invalid"
+    return render(request, "accounts/login.html", {"error": error})
+
+
+def pending(request):
+    return render(request, "accounts/pending.html")
 
 
 @login_required
@@ -225,4 +254,55 @@ def usage_guide(request):
     available_models = _fetch_available_models()
     return render(request, "dashboard/usage.html", {
         "available_models": available_models,
+    })
+
+
+@login_required
+def user_management(request):
+    if not request.user.is_staff:
+        return redirect("dashboard")
+
+    if request.method == "POST":
+        user_id = request.POST.get("user_id")
+        action = request.POST.get("action")
+        target_user = get_object_or_404(User, pk=user_id)
+
+        # Don't allow modifying staff/superusers
+        if target_user.is_staff or target_user.is_superuser:
+            messages.error(request, "Cannot modify admin users.")
+            return redirect("user_management")
+
+        profile, _ = UserProfile.objects.get_or_create(
+            user=target_user,
+            defaults={"is_approved": False},
+        )
+
+        if action == "approve":
+            profile.is_approved = True
+            profile.save()
+            messages.success(request, f"User '{target_user.username}' approved.")
+        elif action == "revoke":
+            profile.is_approved = False
+            profile.save()
+            messages.warning(request, f"Access revoked for '{target_user.username}'.")
+
+        return redirect("user_management")
+
+    users = (
+        User.objects.filter(is_staff=False)
+        .select_related("profile")
+        .order_by("-date_joined")
+    )
+
+    pending_count = UserProfile.objects.filter(
+        is_approved=False, user__is_staff=False
+    ).count()
+    approved_count = UserProfile.objects.filter(
+        is_approved=True, user__is_staff=False
+    ).count()
+
+    return render(request, "dashboard/users.html", {
+        "users": users,
+        "pending_count": pending_count,
+        "approved_count": approved_count,
     })

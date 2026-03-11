@@ -10,4 +10,5 @@ urlpatterns = [
     path("keys/<int:pk>/revoke/", key_views.key_revoke, name="key_revoke"),
     path("test/", account_views.test_api, name="test_api"),
     path("usage/", account_views.usage_guide, name="usage"),
+    path("users/", account_views.user_management, name="user_management"),
 ]

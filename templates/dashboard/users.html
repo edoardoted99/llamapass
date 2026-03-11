@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}User Management - LLamaPass{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">User Management</h3>
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card">
+      <div class="card-body">
+        <div class="text-muted small">Total Users</div>
+        <div class="fs-4 fw-bold">{{ pending_count|add:approved_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card" style="border-left: 4px solid #ffc107;">
+      <div class="card-body">
+        <div class="text-muted small">Pending Approval</div>
+        <div class="fs-4 fw-bold text-warning">{{ pending_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card" style="border-left: 4px solid #198754;">
+      <div class="card-body">
+        <div class="text-muted small">Approved</div>
+        <div class="fs-4 fw-bold text-success">{{ approved_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-dark table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Joined</th>
+            <th>Status</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u.username }}</td>
+            <td>{{ u.email|default:"-" }}</td>
+            <td>{{ u.date_joined|date:"Y-m-d H:i" }}</td>
+            <td>
+              {% if u.profile.is_approved %}
+              <span class="badge bg-success">Approved</span>
+              {% else %}
+              <span class="badge bg-warning text-dark">Pending</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="user_id" value="{{ u.pk }}">
+                {% if u.profile.is_approved %}
+                <button type="submit" name="action" value="revoke"
+                        class="btn btn-outline-danger btn-sm"
+                        onclick="return confirm('Revoke access for {{ u.username }}?')">
+                  Revoke
+                </button>
+                {% else %}
+                <button type="submit" name="action" value="approve"
+                        class="btn btn-success btn-sm">
+                  Approve
+                </button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">No users registered yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
