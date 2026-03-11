@@ -10,7 +10,7 @@
 {# ── SECTION 1: Top KPI Cards ── #}
 <div class="row g-3 mb-4">
   <div class="col-6 col-lg-3">
-    <div class="card h-100" style="border-left: 4px solid #0d6efd;">
+    <div class="card h-100" style="border-left: 4px solid #a855f7;">
       <div class="card-body">
         <p class="text-muted mb-1 small">Requests this month</p>
         <h3 class="mb-0">{{ calls_month }}</h3>
@@ -19,7 +19,7 @@
     </div>
   </div>
   <div class="col-6 col-lg-3">
-    <div class="card h-100" style="border-left: 4px solid #6f42c1;">
+    <div class="card h-100" style="border-left: 4px solid #c084fc;">
       <div class="card-body">
         <p class="text-muted mb-1 small">Tokens used</p>
         <h3 class="mb-0">{{ tokens_month }}</h3>
@@ -28,7 +28,7 @@
     </div>
   </div>
   <div class="col-6 col-lg-3">
-    <div class="card h-100" style="border-left: 4px solid #fd7e14;">
+    <div class="card h-100" style="border-left: 4px solid #e879f9;">
       <div class="card-body">
         <p class="text-muted mb-1 small">Avg response time</p>
         <h3 class="mb-0">{% if avg_latency %}{{ avg_latency|floatformat:0 }}<small class="text-muted"> ms</small>{% else %}&mdash;{% endif %}</h3>
@@ -324,13 +324,13 @@
     data: {
       labels,
       datasets: [
-        { label: 'Total', data: data.map(d => d.calls), borderColor: '#0d6efd',
-          backgroundColor: 'rgba(13,110,253,0.08)', fill: true, tension: 0.3 },
-        { label: 'Chat', data: data.map(d => d.chat), borderColor: '#20c997',
+        { label: 'Total', data: data.map(d => d.calls), borderColor: '#a855f7',
+          backgroundColor: 'rgba(168,85,247,0.08)', fill: true, tension: 0.3 },
+        { label: 'Chat', data: data.map(d => d.chat), borderColor: '#22c55e',
           tension: 0.3, borderDash: [] },
-        { label: 'Generate', data: data.map(d => d.generate), borderColor: '#6f42c1',
+        { label: 'Generate', data: data.map(d => d.generate), borderColor: '#c084fc',
           tension: 0.3 },
-        { label: 'Embeddings', data: data.map(d => d.embeddings), borderColor: '#fd7e14',
+        { label: 'Embeddings', data: data.map(d => d.embeddings), borderColor: '#e879f9',
           tension: 0.3, borderDash: [4, 4] }
       ]
     },
@@ -348,7 +348,7 @@
       labels: hasDist ? ['Chat', 'Generate', 'Embeddings'] : ['No data'],
       datasets: [{
         data: hasDist ? [chat, gen, emb] : [1],
-        backgroundColor: hasDist ? ['#20c997', '#6f42c1', '#fd7e14'] : ['rgba(255,255,255,0.06)'],
+        backgroundColor: hasDist ? ['#22c55e', '#a855f7', '#e879f9'] : ['rgba(255,255,255,0.06)'],
         borderWidth: 0
       }]
     },
@@ -365,9 +365,9 @@
       labels,
       datasets: [
         { label: 'Tokens In', data: data.map(d => d.tokens_in),
-          backgroundColor: 'rgba(13,110,253,0.6)', borderRadius: 3 },
+          backgroundColor: 'rgba(168,85,247,0.6)', borderRadius: 3 },
         { label: 'Tokens Out', data: data.map(d => d.tokens_out),
-          backgroundColor: 'rgba(111,66,193,0.6)', borderRadius: 3 }
+          backgroundColor: 'rgba(192,132,252,0.6)', borderRadius: 3 }
       ]
     },
     options: { responsive: true, interaction: { mode: 'index', intersect: false }, scales: commonScales }
@@ -395,7 +395,7 @@
   });
 
   /* ── 5. Models horizontal bar chart ── */
-  const modelColors = ['#0d6efd','#20c997','#6f42c1','#fd7e14','#dc3545','#ffc107','#0dcaf0','#198754','#d63384','#adb5bd'];
+  const modelColors = ['#a855f7','#22c55e','#c084fc','#e879f9','#f472b6','#818cf8','#34d399','#fbbf24','#f87171','#94a3b8'];
   new Chart(document.getElementById('modelsChart'), {
     type: 'bar',
     data: {
@@ -426,8 +426,8 @@
       datasets: [{
         label: 'Avg Latency (ms)',
         data: data.map(d => d.latency),
-        borderColor: '#fd7e14',
-        backgroundColor: 'rgba(253,126,20,0.08)',
+        borderColor: '#e879f9',
+        backgroundColor: 'rgba(232,121,249,0.08)',
         fill: true, tension: 0.3, pointRadius: 3
       }]
     },
