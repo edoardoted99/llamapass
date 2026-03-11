@@ -2,26 +2,27 @@
 
 A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user support, API key management, rate limiting, and usage tracking. Built with Django.
 
-**Live demo:** [llamapass.org](https://llamapass.org)
-
 ## Screenshots
 
-### Dashboard
+### Landing Page & Dashboard
 ![Dashboard](screens/dashboard.png)
 
 ### API Keys
 ![API Keys](screens/keys.png)
 
-### Test
-![Test - Chat](screens/chat.png)
-![Test - Embeddings](screens/embedding.png)
+### Built-in Chat Test
+![Chat](screens/chat.png)
+
+### User Management & Invite Codes
+![User Management](screens/invitations.png)
 
 ### Usage Guide
 ![Usage](screens/usage.png)
 
 ## Features
 
-- **Multi-user** — Registration, login, password management
+- **Multi-user with admin approval** — Registration with invite codes for instant access, or manual admin approval
+- **Invite codes** — Admins generate invite codes with max uses and expiration to control who joins
 - **API key management** — Create, revoke, set expiration (7d–1y), per-key model restrictions
 - **Rate limiting** — Configurable per-key limits (e.g. `60/min`, `1000/hour`) with live dashboard monitoring
 - **Usage dashboard** — 30-day stats with charts: requests, tokens, latency, errors, model breakdown
@@ -31,15 +32,15 @@ A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user suppo
 - **Authentication** — `Authorization: Api-Key`, `Authorization: Bearer` (OpenAI SDK compatible), `X-API-Key`
 - **Admin-only endpoints** — Pull, push, create, delete, copy restricted to staff users
 - **Docker ready** — Docker Compose with Redis for production-grade rate limiting
-- **Dark mode** — Bootstrap 5.3 dark theme
+- **Dark theme** — Custom dark purple theme across the entire app
 
 ## Quick Start
 
 ### Docker (recommended)
 
 ```bash
-git clone https://github.com/edoardoted99/django-api-hub-ollama.git
-cd django-api-hub-ollama
+git clone https://github.com/edoardoted99/llamapass.git
+cd llamapass
 cp .env.example .env  # edit SECRET_KEY
 docker compose up --build
 docker compose exec web python manage.py createsuperuser
@@ -50,8 +51,8 @@ The app runs at `http://localhost:8000`. Ollama must be running on the host mach
 ### Local development
 
 ```bash
-git clone https://github.com/edoardoted99/django-api-hub-ollama.git
-cd django-api-hub-ollama
+git clone https://github.com/edoardoted99/llamapass.git
+cd llamapass
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -70,6 +71,7 @@ Edit `.env`:
 | `SECRET_KEY` | `insecure-dev-key` | Django secret key |
 | `DEBUG` | `False` | Debug mode |
 | `ALLOWED_HOSTS` | `localhost,127.0.0.1` | Comma-separated hosts |
+| `CSRF_TRUSTED_ORIGINS` | `` | Required if behind HTTPS proxy (e.g. `https://yourdomain.com`) |
 | `OLLAMA_UPSTREAM_BASE_URL` | `http://127.0.0.1:11434` | Ollama server URL |
 | `ENABLE_STREAMING` | `True` | Enable streaming responses |
 | `DEFAULT_RATE_LIMIT` | `60/min` | Default rate limit per key |
@@ -113,6 +115,6 @@ print(response.choices[0].message.content)
 - Django 5.1 + uvicorn (ASGI)
 - httpx (async proxy)
 - Redis + django-redis (rate limiting)
-- Bootstrap 5.3 (dark mode)
+- Bootstrap 5.3 + custom dark purple theme
 - SQLite
 - Docker + Docker Compose
