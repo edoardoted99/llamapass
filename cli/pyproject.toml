@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llamapass"
-version = "0.3.0"
-description = "CLI client for LlamaPass - Ollama gateway with authentication"
+version = "0.3.1"
+description = "CLI client for LlamaPass - Ollama gateway with authentication and token tracking"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
