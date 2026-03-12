@@ -47,7 +47,7 @@ def _log_request(
 
     updates = {"calls_total": F("calls_total") + 1}
 
-    if "chat" in endpoint:
+    if "chat" in endpoint or "messages" in endpoint:
         updates["calls_chat"] = F("calls_chat") + 1
     elif "generate" in endpoint:
         updates["calls_generate"] = F("calls_generate") + 1
