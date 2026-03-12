@@ -79,6 +79,32 @@ Edit `.env`:
 | `REDIS_URL` | `` | Redis URL (empty = in-memory cache) |
 | `DATABASE_PATH` | `./db.sqlite3` | SQLite database path |
 
+## CLI Client
+
+LlamaPass includes a CLI client that wraps the standard `ollama` commands, adding authentication transparently. Install it with pip:
+
+```bash
+pip install llamapass
+```
+
+Configure it once:
+
+```bash
+llamapass config set-url https://your-llamapass-server.com
+llamapass config set-key oah_your_key_here
+```
+
+Then use it exactly like the Ollama CLI — all commands are proxied through your LlamaPass server with automatic authentication:
+
+```bash
+llamapass run gemma3
+llamapass list
+llamapass pull llama3
+llamapass show gemma3
+```
+
+Under the hood, `llamapass` starts a local proxy that injects your API key into every request, so existing Ollama workflows just work.
+
 ## API Usage
 
 Create an API key from the web UI, then:
