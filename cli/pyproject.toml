@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llamapass"
+version = "0.3.0"
+description = "CLI client for LlamaPass - Ollama gateway with authentication"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "httpx>=0.27",
+]
+
+[project.urls]
+Homepage = "https://llamapass.org"
+Repository = "https://github.com/edoardoted99/llamapass"
+Issues = "https://github.com/edoardoted99/llamapass/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["llamapass_cli"]
+
+[project.scripts]
+llamapass = "llamapass_cli.cli:main"

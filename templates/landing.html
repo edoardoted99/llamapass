@@ -204,7 +204,33 @@
     </div>
   </section>
 
-  <!-- Terminal -->
+  <!-- CLI -->
+  <section class="terminal-section">
+    <h2 style="text-align:center; font-size:2.2rem; font-weight:700; margin-bottom:0.75rem;">Use from the terminal</h2>
+    <p style="text-align:center; color:var(--text-muted); margin-bottom:2rem; font-size:1.1rem;">Install the CLI and start chatting with models instantly</p>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot r"></div>
+        <div class="terminal-dot y"></div>
+        <div class="terminal-dot g"></div>
+        <span>terminal</span>
+      </div>
+      <pre><span class="comment"># Install the CLI</span>
+<span class="cmd">$</span> pip install llamapass
+
+<span class="comment"># Configure your API key</span>
+<span class="cmd">$</span> llamapass config set-key oah_your_key
+
+<span class="comment"># Chat with any model</span>
+<span class="cmd">$</span> llamapass run gemma3
+LlamaPass - gemma3 (type /bye to quit)
+
+&gt;&gt;&gt; Hello!
+Hi there! How can I help you today?</pre>
+    </div>
+  </section>
+
+  <!-- Deploy -->
   <section class="terminal-section">
     <h2 style="text-align:center; font-size:2.2rem; font-weight:700; margin-bottom:0.75rem;">Deploy in minutes</h2>
     <p style="text-align:center; color:var(--text-muted); margin-bottom:2rem; font-size:1.1rem;">Clone, configure, and run with Docker</p>

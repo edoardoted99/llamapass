@@ -11,7 +11,7 @@ from keys.authentication import authenticate_api_key
 from usage.logging import log_request_async
 
 
-STREAMING_ENDPOINTS = ("api/chat", "api/generate")
+STREAMING_ENDPOINTS = ("api/chat", "api/generate", "api/pull", "api/push", "api/create")
 
 SAFE_FORWARD_HEADERS = {"content-type", "accept", "user-agent"}
 
