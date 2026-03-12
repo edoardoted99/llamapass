@@ -11,4 +11,5 @@ urlpatterns = [
     path("test/", account_views.test_api, name="test_api"),
     path("usage/", account_views.usage_guide, name="usage"),
     path("users/", account_views.user_management, name="user_management"),
+    path("api/live-tokens/", account_views.live_tokens, name="live_tokens"),
 ]

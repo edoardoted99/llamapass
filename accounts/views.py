@@ -1,10 +1,12 @@
 import json
+from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Avg, Count, Max, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -284,6 +286,40 @@ def usage_guide(request):
     return render(request, "dashboard/usage.html", {
         "available_models": available_models,
     })
+
+
+@login_required
+def live_tokens(request):
+    """Return per-minute token usage for the last 30 minutes, as JSON."""
+    key_prefix = request.GET.get("key", "")
+    now = timezone.now()
+    since = now - timedelta(minutes=30)
+
+    qs = RequestLog.objects.filter(user=request.user, timestamp__gte=since)
+    if key_prefix:
+        qs = qs.filter(api_key_prefix=key_prefix)
+
+    logs = qs.values_list("timestamp", "tokens_in", "tokens_out")
+
+    # Bucket by minute
+    buckets = {}
+    for ts, tok_in, tok_out in logs:
+        minute_key = ts.strftime("%H:%M")
+        if minute_key not in buckets:
+            buckets[minute_key] = {"tokens_in": 0, "tokens_out": 0, "requests": 0}
+        buckets[minute_key]["tokens_in"] += tok_in or 0
+        buckets[minute_key]["tokens_out"] += tok_out or 0
+        buckets[minute_key]["requests"] += 1
+
+    # Build full 30-minute timeline
+    result = []
+    for i in range(30):
+        t = since + timedelta(minutes=i)
+        key = t.strftime("%H:%M")
+        entry = buckets.get(key, {"tokens_in": 0, "tokens_out": 0, "requests": 0})
+        result.append({"minute": key, **entry})
+
+    return JsonResponse({"data": result})
 
 
 @login_required

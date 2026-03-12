@@ -83,6 +83,36 @@
   </div>
 </div>
 
+{# ── SECTION 1c: Live Token Monitor ── #}
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Live token usage <small class="text-muted ms-2">last 30 minutes</small></span>
+    <div class="d-flex align-items-center gap-2">
+      <select id="liveKeySelect" class="form-select form-select-sm" style="width: auto; min-width: 160px;">
+        <option value="">All keys</option>
+        {% for key in keys %}
+        <option value="{{ key.prefix }}">{{ key.name }} ({{ key.prefix }}...)</option>
+        {% endfor %}
+      </select>
+      <span id="liveStatus" class="badge bg-success" style="font-size: .65rem;">LIVE</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row mb-2">
+      <div class="col-auto">
+        <span class="small text-muted">Tokens in: <strong id="liveTotalIn" class="text-info">0</strong></span>
+      </div>
+      <div class="col-auto">
+        <span class="small text-muted">Tokens out: <strong id="liveTotalOut" class="text-warning">0</strong></span>
+      </div>
+      <div class="col-auto">
+        <span class="small text-muted">Requests: <strong id="liveTotalReq">0</strong></span>
+      </div>
+    </div>
+    <canvas id="liveTokensChart" height="100"></canvas>
+  </div>
+</div>
+
 {# ── SECTION 2: Requests over time ── #}
 <div class="row g-3 mb-4">
   <div class="col-lg-8">
@@ -433,6 +463,77 @@
     },
     options: { responsive: true, scales: commonScales }
   });
+
+  /* ── 7. Live token monitor ── */
+  const liveCtx = document.getElementById('liveTokensChart');
+  const liveChart = new Chart(liveCtx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Tokens In',
+          data: [],
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56,189,248,0.1)',
+          fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2
+        },
+        {
+          label: 'Tokens Out',
+          data: [],
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,0.1)',
+          fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { maxTicksLimit: 15, font: { size: 10 } } },
+        y: { grid: { color: gridColor }, beginAtZero: true, title: { display: true, text: 'tokens', color: tickColor } }
+      },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, padding: 12 } }
+      }
+    }
+  });
+
+  const keySelect = document.getElementById('liveKeySelect');
+  const statusBadge = document.getElementById('liveStatus');
+
+  async function fetchLiveTokens() {
+    const key = keySelect.value;
+    const url = '{% url "live_tokens" %}' + (key ? '?key=' + key : '');
+    try {
+      const resp = await fetch(url);
+      const json = await resp.json();
+      const rows = json.data;
+      liveChart.data.labels = rows.map(r => r.minute);
+      liveChart.data.datasets[0].data = rows.map(r => r.tokens_in);
+      liveChart.data.datasets[1].data = rows.map(r => r.tokens_out);
+      liveChart.update();
+
+      const totalIn = rows.reduce((s, r) => s + r.tokens_in, 0);
+      const totalOut = rows.reduce((s, r) => s + r.tokens_out, 0);
+      const totalReq = rows.reduce((s, r) => s + r.requests, 0);
+      document.getElementById('liveTotalIn').textContent = totalIn.toLocaleString();
+      document.getElementById('liveTotalOut').textContent = totalOut.toLocaleString();
+      document.getElementById('liveTotalReq').textContent = totalReq.toLocaleString();
+
+      statusBadge.className = 'badge bg-success';
+      statusBadge.textContent = 'LIVE';
+    } catch (e) {
+      statusBadge.className = 'badge bg-danger';
+      statusBadge.textContent = 'ERROR';
+    }
+  }
+
+  fetchLiveTokens();
+  setInterval(fetchLiveTokens, 10000);
+  keySelect.addEventListener('change', fetchLiveTokens);
 })();
 </script>
 {% endblock %}
