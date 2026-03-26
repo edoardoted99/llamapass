@@ -38,15 +38,42 @@ A self-hosted API gateway for [Ollama](https://ollama.com) with multi-user suppo
 
 ### Docker (recommended)
 
+The Docker setup includes the full stack: **Ollama + LlamaPass + OpenWebUI + Redis**.
+
 ```bash
 git clone https://github.com/edoardoted99/llamapass.git
 cd llamapass
 cp .env.example .env  # edit SECRET_KEY
 docker compose up --build
-docker compose exec web python manage.py createsuperuser
 ```
 
-The app runs at `http://localhost:8000`. Ollama must be running on the host machine.
+**First-time setup:**
+
+1. Create an admin account:
+   ```bash
+   docker compose exec web python manage.py createsuperuser
+   ```
+   Or set `ADMIN_USER`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` in `.env` for automatic creation.
+
+2. Log in to LlamaPass at `http://localhost:8000` and create an API key.
+
+3. Update the `OPENAI_API_KEY` in `docker-compose.yml` (under `open-webui`) with your new key, then:
+   ```bash
+   docker compose restart open-webui
+   ```
+
+4. Access OpenWebUI at `http://localhost:3000`.
+
+**Services:**
+
+| Service | URL | Description |
+|---|---|---|
+| LlamaPass | `http://localhost:8000` | API gateway & dashboard |
+| OpenWebUI | `http://localhost:3000` | Chat interface (routed through LlamaPass) |
+| Ollama | internal (`:11434`) | LLM backend |
+| Redis | internal (`:6379`) | Rate limiting cache |
+
+**GPU support:** Uncomment the `deploy` section under `ollama` in `docker-compose.yml` to enable NVIDIA GPU passthrough.
 
 ### Local development
 
@@ -78,6 +105,9 @@ Edit `.env`:
 | `LOG_RETENTION_DAYS` | `30` | Days to keep request logs |
 | `REDIS_URL` | `` | Redis URL (empty = in-memory cache) |
 | `DATABASE_PATH` | `./db.sqlite3` | SQLite database path |
+| `ADMIN_USER` | `` | Auto-create superuser on first boot |
+| `ADMIN_EMAIL` | `` | Superuser email |
+| `ADMIN_PASSWORD` | `` | Superuser password |
 
 ## CLI Client
 

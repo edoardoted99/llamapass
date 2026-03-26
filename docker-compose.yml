@@ -1,4 +1,18 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    # Uncomment for NVIDIA GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -15,15 +29,31 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_PATH=/app/db/db.sqlite3
-      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
-      - OLLAMA_UPSTREAM_BASE_URL=http://host.docker.internal:11435
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,web
+      - OLLAMA_UPSTREAM_BASE_URL=http://ollama:11434
     depends_on:
       - redis
+      - ollama
     volumes:
       - db_data:/app/db
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    environment:
+      - OPENAI_API_BASE_URL=http://web:8000/ollama/v1
+      - OPENAI_API_KEY=oah_YOUR_API_KEY_HERE
+      - OLLAMA_BASE_URL=http://web:8000/ollama
+      - WEBUI_AUTH=true
+    depends_on:
+      - web
+    volumes:
+      - openwebui_data:/app/backend/data
 
 volumes:
   redis_data:
   db_data:
+  ollama_data:
+  openwebui_data:
